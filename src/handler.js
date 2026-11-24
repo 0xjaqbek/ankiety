@@ -5,7 +5,7 @@ import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
 import { databaseConnection, DatabaseConfigurationError } from './database.js';
 import { importGoogleForm, ImportError } from './google-forms.js';
-import { beginGoogleAuth, googleEnabled, googleIdentity } from './google-auth.js';
+import { beginGoogleAuth, googleConfigurationError, googleEnabled, googleIdentity } from './google-auth.js';
 import {
   authView, dashboardView, errorView, importView, mineView, previewView, resultsView, takeView,
 } from './views.js';
@@ -465,6 +465,8 @@ async function handle(req, res, connect, context) {
   const db = await connect();
   const user = await getUser(req, db);
   Object.assign(context, { user, csrf, googleEnabled, db });
+
+  if (!user && googleConfigurationError) throw new HttpError(503, googleConfigurationError);
 
   if (googleEnabled && req.method === 'GET' && ['/google/start', '/google/callback'].includes(path)) {
     return googleRoute(req, res, url, context);

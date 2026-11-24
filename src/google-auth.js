@@ -1,22 +1,38 @@
 import { createHash, randomBytes } from 'node:crypto';
 
-const { GOOGLE_CLIENT_ID: clientId, GOOGLE_CLIENT_SECRET: clientSecret, GOOGLE_REDIRECT_URI: redirectUri } = process.env;
+const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+const redirectUri = process.env.GOOGLE_REDIRECT_URI?.trim();
 const authorizationEndpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
 const tokenEndpoint = 'https://oauth2.googleapis.com/token';
 const userEndpoint = 'https://openidconnect.googleapis.com/v1/userinfo';
 
 export const googleEnabled = Boolean(clientId || clientSecret || redirectUri);
-if (googleEnabled && (!clientId || !clientSecret || !redirectUri)) {
-  throw new Error('Do logowania Google potrzebne są GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET i GOOGLE_REDIRECT_URI.');
-}
-if (googleEnabled) {
-  const callback = new URL(redirectUri);
-  const localhost = ['localhost', '127.0.0.1', '[::1]'].includes(callback.hostname);
-  if ((callback.protocol !== 'https:' && !(localhost && callback.protocol === 'http:'))
-      || callback.pathname !== '/google/callback' || callback.username || callback.password || callback.search || callback.hash) {
-    throw new Error('GOOGLE_REDIRECT_URI musi wskazywać adres aplikacji zakończony na /google/callback.');
+
+function configurationError() {
+  if (!googleEnabled) return null;
+
+  const missing = Object.entries({
+    GOOGLE_CLIENT_ID: clientId,
+    GOOGLE_CLIENT_SECRET: clientSecret,
+    GOOGLE_REDIRECT_URI: redirectUri,
+  }).filter(([, value]) => !value).map(([key]) => key);
+
+  if (missing.length) {
+    return `Uzupełnij ustawienia logowania przez Google. Brakuje ${missing.join(', ')}.`;
   }
+
+  const callback = URL.parse(redirectUri);
+  const localhost = callback && ['localhost', '127.0.0.1', '[::1]'].includes(callback.hostname);
+  if (!callback || (callback.protocol !== 'https:' && !(localhost && callback.protocol === 'http:'))
+      || callback.pathname !== '/google/callback' || callback.username || callback.password || callback.search || callback.hash) {
+    return 'GOOGLE_REDIRECT_URI musi wskazywać adres aplikacji zakończony na /google/callback.';
+  }
+
+  return null;
 }
+
+export const googleConfigurationError = configurationError();
 
 export function beginGoogleAuth() {
   const state = randomBytes(32).toString('hex');
