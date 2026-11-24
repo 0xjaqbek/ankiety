@@ -49,6 +49,7 @@ const schema = `
       UNIQUE (survey_id, respondent_id)
     );
 
+    CREATE INDEX IF NOT EXISTS responses_by_respondent ON responses(respondent_id, id);
     CREATE INDEX IF NOT EXISTS surveys_by_owner ON surveys(owner_id, id);
 `;
 

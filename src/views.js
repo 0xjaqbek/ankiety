@@ -129,7 +129,7 @@ function surveyCard(survey) {
   </article>`;
 }
 
-export function dashboardView({ user, csrf, surveys, query = '', message }) {
+export function dashboardView({ user, csrf, surveys, completed, query = '', message }) {
   return shell({ title: 'Dostępne ankiety', user, csrf, tab: 'browse', main: `
     ${status(message)}
     <section class="hero">
@@ -140,21 +140,28 @@ export function dashboardView({ user, csrf, surveys, query = '', message }) {
       </div>
     </section>
     <div class="dashboard-grid">
-      <section aria-labelledby="browse-heading">
-        <div class="section-heading"><h2 id="browse-heading">Dostępne ankiety</h2><span class="count">${number(surveys.length)}</span></div>
-        <form class="search" method="get" action="/">
-          <label class="sr-only" for="q">Szukaj ankiet</label>
-          <input id="q" name="q" type="search" placeholder="Szukaj po tytule lub grupie odbiorców" value="${escape(query)}" maxlength="120">
-          <button class="button secondary" type="submit">Szukaj</button>
-        </form>
-        ${surveys.length ? `<div class="survey-grid">${surveys.map(surveyCard).join('')}</div>` : `
-          <div class="card empty">
-            ${tileIcon('browse-icon')}
-            <h3>${query ? 'Brak wyników wyszukiwania' : 'Brak dostępnych ankiet'}</h3>
-            <p>${query ? 'Wpisz inny tytuł lub grupę odbiorców.' : 'Tutaj pojawią się ankiety innych osób, które możesz wypełnić.'}</p>
-            ${query ? '<a href="/" class="button secondary">Wyczyść wyszukiwanie</a>' : '<a href="/dodaj" class="button secondary">Dodaj ankietę</a>'}
-          </div>`}
-      </section>
+      <div>
+        <section aria-labelledby="browse-heading">
+          <div class="section-heading"><h2 id="browse-heading">Dostępne ankiety</h2><span class="count">${number(surveys.length)}</span></div>
+          <form class="search" method="get" action="/">
+            <label class="sr-only" for="q">Szukaj dostępnych ankiet</label>
+            <input id="q" name="q" type="search" placeholder="Szukaj po tytule lub grupie odbiorców" value="${escape(query)}" maxlength="120">
+            <button class="button secondary" type="submit">Szukaj</button>
+          </form>
+          ${surveys.length ? `<div class="survey-grid">${surveys.map(surveyCard).join('')}</div>` : `
+            <div class="card empty">
+              ${tileIcon('browse-icon')}
+              <h3>${query ? 'Brak wyników wyszukiwania' : 'Brak dostępnych ankiet'}</h3>
+              <p>${query ? 'Wpisz inny tytuł lub grupę odbiorców.' : 'Tutaj pojawią się ankiety innych osób, które możesz wypełnić.'}</p>
+              ${query ? '<a href="/" class="button secondary">Wyczyść wyszukiwanie</a>' : '<a href="/dodaj" class="button secondary">Dodaj ankietę</a>'}
+            </div>`}
+        </section>
+        <section class="card completed-surveys" aria-labelledby="completed-heading">
+          <h2 id="completed-heading">Wypełnione ankiety</h2>
+          ${completed.length ? `<ul>${completed.map(survey => `<li>${escape(survey.title)}</li>`).join('')}</ul>`
+            : '<p>Tu pojawią się tytuły ankiet, które wypełnisz.</p>'}
+        </section>
+      </div>
       <aside class="card guide"><h2>Jak działa wymiana?</h2><ul class="steps">${stepList()}</ul></aside>
     </div>` });
 }

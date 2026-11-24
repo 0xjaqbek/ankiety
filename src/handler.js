@@ -601,9 +601,18 @@ async function handle(req, res, connect, context) {
   if (req.method === 'GET' && path === '/') {
     const query = (url.searchParams.get('q') || '').trim().slice(0, 120);
     const needle = query.toLocaleLowerCase('pl');
-    const surveys = (await availableSurveys(db, user.id)).filter(survey =>
+    const [available, completed] = await Promise.all([
+      availableSurveys(db, user.id),
+      db.all(`
+        SELECT surveys.title
+        FROM responses JOIN surveys ON surveys.id = responses.survey_id
+        WHERE responses.respondent_id = ?
+        ORDER BY responses.id DESC
+      `, user.id),
+    ]);
+    const surveys = available.filter(survey =>
       `${survey.title} ${survey.audience}`.toLocaleLowerCase('pl').includes(needle));
-    return reply(res, 200, dashboardView({ ...context, surveys, query, message }));
+    return reply(res, 200, dashboardView({ ...context, surveys, completed, query, message }));
   }
 
   throw new HttpError(404, 'Strona, której szukasz, jest niedostępna.');
