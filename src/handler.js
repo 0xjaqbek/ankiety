@@ -7,7 +7,7 @@ import { databaseConnection, DatabaseConfigurationError } from './database.js';
 import { importGoogleForm, ImportError } from './google-forms.js';
 import { beginGoogleAuth, googleConfigurationError, googleEnabled, googleIdentity } from './google-auth.js';
 import {
-  authView, dashboardView, errorView, importView, mineView, previewView, resultsView, takeView,
+  authView, dashboardView, errorView, guideView, importView, mineView, previewView, resultsView, takeView,
 } from './views.js';
 
 const deriveKey = promisify(scrypt);
@@ -457,6 +457,17 @@ async function handle(req, res, connect, context) {
   if (req.method === 'GET' && path === '/assets/app.css') {
     const css = await readFile(new URL('../public/assets/app.css', import.meta.url));
     return reply(res, 200, css, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'public, max-age=300' });
+  }
+
+  if (req.method === 'GET' && path === '/instrukcja') return reply(res, 200, guideView());
+  if (req.method === 'GET' && /^\/assets\/instrukcja\/[a-z]+\.jpg$/.test(path)) {
+    try {
+      const screenshot = await readFile(new URL(`../public${path}`, import.meta.url));
+      return reply(res, 200, screenshot, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=300' });
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      throw new HttpError(404, 'Nie znaleziono tego obrazu.');
+    }
   }
 
   const existingCsrf = cookieValue(req, cookieNames.csrf);

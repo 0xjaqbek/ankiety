@@ -207,7 +207,7 @@ progress::-moz-progress-bar { background: var(--purple); border-radius: 1rem; }
   .shell { display: block; }
   .sidebar { height: auto; position: static; flex-direction: row; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: 0.75rem 0.85rem 0.65rem; gap: 0.45rem 0.65rem; }
   .sidebar .brand { margin-left: 0; }
-  .sidebar nav { width: 100%; order: 3; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.28rem; }
+  .sidebar nav { width: 100%; order: 3; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.28rem; }
   .sidebar nav a { justify-content: center; text-align: center; font-size: 0.86rem; padding: 0.35rem 0.25rem; gap: 0.15rem; }
   .sidebar nav .tile-icon { display: none; }
   .sidebar-foot { padding: 0; border-top: 0; margin: 0; }
@@ -228,3 +228,40 @@ progress::-moz-progress-bar { background: var(--purple); border-radius: 1rem; }
   .guide .steps li { flex-direction: row; }
   .stat span { display: block; font-size: 0.8rem; }
 }
+
+.help-icon i { border: 2px solid currentColor; border-radius: 50%; width: 17px; height: 17px; }
+.help-icon i::before { content: "?"; inset: 0; text-align: center; font-size: 11px; font-weight: 800; line-height: 13px; }
+
+.guide-page { max-width: 61rem; margin: 0 auto; padding: clamp(1.1rem, 4vw, 3rem) clamp(0.8rem, 4vw, 2.75rem) 3rem; }
+.guide-intro { max-width: 48rem; }
+.guide-intro p, .guide-section p { margin-top: 0.65rem; font-size: 1.12rem; line-height: 1.65; }
+.guide-index { margin: 1.4rem 0; }
+.guide-index ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 0.6rem; }
+.guide-index a { min-height: 48px; display: flex; align-items: center; padding: 0.55rem 0.85rem; border: 1px solid #d4c7f7; border-radius: 9px; background: var(--violet-pale); font-size: 1.06rem; font-weight: 700; }
+.guide-index a:hover { background: #e5d8ff; }
+.guide-section { padding: clamp(1rem, 3vw, 1.8rem); margin-bottom: 1.1rem; scroll-margin-top: 1rem; }
+.guide-section h2 { font-size: clamp(1.5rem, 3.4vw, 2rem); }
+.guide-steps { padding-left: 1.65rem; margin: 1.15rem 0 0; }
+.guide-steps > li { padding-left: 0.2rem; }
+.guide-steps > li + li { margin-top: 1.3rem; }
+.guide-steps > li::marker { color: var(--purple-dark); font-size: 1.15rem; font-weight: 750; }
+.guide-steps h3 { font-size: 1.23rem; }
+.guide-figure { margin: 0.85rem 0 0; }
+.guide-shot { display: block; position: relative; width: fit-content; max-width: 100%; outline: 1px solid var(--border); border-radius: 8px; }
+.guide-shot:focus-visible { outline: 3px solid #8c70ff; outline-offset: 3px; }
+.guide-shot img { display: block; max-width: 100%; height: auto; border-radius: inherit; }
+.guide-highlight { position: absolute; border: 3px solid #b91c37; border-radius: 9px; box-shadow: 0 0 0 1px white; pointer-events: none; }
+.shot-import .guide-highlight:nth-of-type(1) { left: 5.31%; top: 46.08%; width: 89.44%; height: 15.78%; }
+.shot-import .guide-highlight:nth-of-type(2) { left: 5.31%; top: 73.86%; width: 22.89%; height: 14.91%; }
+.shot-opublikuj .guide-highlight { left: 10.21%; top: 83.37%; width: 46.5%; height: 9.46%; }
+.shot-wybierz .guide-highlight { left: 5.1%; top: 75.69%; width: 29.78%; height: 15.74%; }
+.shot-wyslij .guide-highlight { left: 1.08%; top: 85.71%; width: 21.25%; height: 12.32%; }
+.shot-moje .guide-highlight { left: 3.23%; top: 68.29%; width: 16.55%; height: 20.4%; }
+.shot-wyniki .guide-highlight:nth-of-type(1) { left: 84.21%; top: 54.38%; width: 12.47%; height: 15.32%; }
+.shot-wyniki .guide-highlight:nth-of-type(2) { left: 84.45%; top: 82.01%; width: 14.55%; height: 15.32%; }
+.guide-note { padding: 0.75rem 1rem; border-left: 4px solid var(--purple); background: var(--violet-pale); border-radius: 0 8px 8px 0; }
+.guide-menu { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.55rem; }
+.guide-menu span { color: var(--muted); }
+.guide-menu strong { padding: 0.26rem 0.55rem; background: #e5f7ed; border: 1px solid #afd6bf; border-radius: 6px; color: #17643b; }
+.guide-section .guide-sources { margin-top: 1.15rem; font-size: 0.98rem; }
+.guide-end { margin-top: 1.4rem; }

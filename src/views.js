@@ -1,3 +1,5 @@
+import { guideContents } from './guide.js';
+
 const escapeChars = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const escape = (value = '') => String(value).replace(/[&<>"']/g, char => escapeChars[char]);
 
@@ -41,6 +43,7 @@ const links = [
   ['browse', '/', 'Dostępne ankiety', 'browse-icon'],
   ['mine', '/moje', 'Moje ankiety', 'surveys-icon'],
   ['new', '/dodaj', 'Dodaj ankietę', 'plus-icon'],
+  ['guide', '/instrukcja', 'Instrukcja', 'help-icon'],
 ];
 
 function shell({ title, user, csrf, tab, main }) {
@@ -99,6 +102,7 @@ export function authView({ mode, csrf, errors, values = {}, googleEnabled }) {
         <button class="button primary" type="submit">${heading}</button>
       </form>
       <p class="auth-switch">${signup ? 'Masz już konto? <a href="/logowanie">Zaloguj się</a>' : 'Nie masz konta? <a href="/rejestracja">Zarejestruj się</a>'}</p>`}
+      <p class="auth-switch"><a href="/instrukcja">Instrukcja krok po kroku</a></p>
     </section>`;
 
   return document(heading, `
@@ -311,6 +315,12 @@ export function resultsView({ user, csrf, survey, questions, responses, message,
         <span>Strona ${page} z ${lastPage}</span>
         ${page < lastPage ? `<a href="?strona=${page + 1}">Następna</a>` : ''}</nav>` : ''}
     </section>` });
+}
+
+export function guideView() {
+  return document('Instrukcja krok po kroku', `
+    <header class="guest-header">${brand}<a class="button plain" href="/">Wróć do Ankiet</a></header>
+    <main id="main" class="guide-page">${guideContents()}</main>`);
 }
 
 export function errorView({ user, csrf, title, message }) {
