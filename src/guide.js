@@ -52,7 +52,7 @@ export function guideContents() {
         <li>
           <h3>Opublikuj ankietę</h3>
           <p>Sprawdź pytania w podglądzie. Podaj, dla kogo jest ankieta, ile minut zajmie i ilu odpowiedzi potrzebujesz.</p>
-          <p>Kliknij <strong>Opublikuj ankietę</strong>. Od tej chwili inni mogą ją wypełniać.</p>
+          <p>Kliknij <strong>Opublikuj ankietę</strong>. Zobaczysz ją od razu w <strong>Moich ankietach</strong>. Aby zmienić jej ustawienia, kliknij <strong>Edytuj</strong>.</p>
           ${screenshot('opublikuj')}
         </li>
       </ol>

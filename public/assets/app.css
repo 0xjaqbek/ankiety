@@ -115,12 +115,15 @@ h3 { font-size: 1.13rem; }
 .survey-card h3 a, .survey-card h2 a { color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
 .survey-card h3 a:hover, .survey-card h2 a:hover { text-decoration: underline; }
 .survey-card p { color: var(--muted); font-size: 0.91rem; overflow-wrap: anywhere; }
-.survey-card > .button { margin-top: auto; }
+.survey-card > .button, .mine-card-actions { margin-top: auto; }
+.mine-card-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .empty { display: grid; justify-items: center; text-align: center; gap: 0.65rem; padding: 2.2rem 1rem; }
 .empty p { color: var(--muted); max-width: 27rem; }
 .empty .button { margin-top: 0.45rem; }
 
 .form-panel { max-width: 700px; padding: clamp(1.1rem, 3vw, 1.8rem); }
+.survey-edit { display: grid; gap: 1rem; }
+.survey-edit .form-panel > p { margin-bottom: 0.65rem; color: var(--muted); }
 .form-panel > .tile-icon { margin-bottom: 0.85rem; }
 .form-panel h2 { margin-bottom: 0.8rem; overflow-wrap: anywhere; }
 .form-panel form, .auth-card form { display: grid; gap: 0.5rem; }

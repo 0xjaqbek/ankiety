@@ -184,6 +184,18 @@ const kinds = {
   scale: 'Skala',
 };
 
+function surveySettingsFields(values) {
+  return `
+    <label for="title">Tytuł</label>
+    <input id="title" name="title" value="${escape(values.title)}" maxlength="200" required>
+    <label for="audience">Dla kogo jest ankieta?</label>
+    <input id="audience" name="audience" value="${escape(values.audience)}" placeholder="Np. studenci ratownictwa" maxlength="200" required>
+    <label for="time">Czas wypełnienia w minutach</label>
+    <input id="time" name="time" type="number" min="1" max="120" value="${escape(values.time ?? 5)}" required>
+    <label for="goal">Ile odpowiedzi potrzebujesz?</label>
+    <input id="goal" name="goal" type="number" min="1" max="10000" value="${escape(values.goal ?? 10)}" required>`;
+}
+
 export function previewView({ user, csrf, draft, schema, error, values = {} }) {
   return shell({ title: 'Podgląd importu', user, csrf, tab: 'new', main: `
     <div class="page-heading"><a class="back" href="/dodaj">Dodaj inny formularz</a><h1>Podgląd importu</h1><p>Sprawdź pytania i ustaw cel ankiety.</p></div>
@@ -202,16 +214,44 @@ export function previewView({ user, csrf, draft, schema, error, values = {} }) {
         ${status(error, true)}
         <form method="post" action="/dodaj/${escape(draft)}">
           ${csrfField(csrf)}
-          <label for="title">Tytuł</label>
-          <input id="title" name="title" value="${escape(values.title ?? schema.title)}" maxlength="200" required>
-          <label for="audience">Dla kogo jest ankieta?</label>
-          <input id="audience" name="audience" value="${escape(values.audience)}" placeholder="Np. studenci ratownictwa" maxlength="200" required>
-          <label for="time">Czas wypełnienia w minutach</label>
-          <input id="time" name="time" type="number" min="1" max="120" value="${escape(values.time ?? 5)}" required>
-          <label for="goal">Ile odpowiedzi potrzebujesz?</label>
-          <input id="goal" name="goal" type="number" min="1" max="10000" value="${escape(values.goal ?? 10)}" required>
+          ${surveySettingsFields({ ...values, title: values.title ?? schema.title })}
           <button class="button primary" type="submit">Opublikuj ankietę</button>
         </form>
+      </section>
+    </div>` });
+}
+
+export function editSurveyView({ user, csrf, survey, message, error, questionsError, link = '', values }) {
+  values ??= {
+    title: survey.title, description: survey.description, audience: survey.audience,
+    time: survey.time_minutes, goal: survey.goal,
+  };
+  return shell({ title: 'Edytuj ankietę', user, csrf, tab: 'mine', main: `
+    <div class="page-heading"><a class="back" href="/moje">Moje ankiety</a><h1>Edytuj ankietę</h1><p>${escape(survey.title)}</p></div>
+    ${status(message)}
+    <div class="survey-edit">
+      <section class="card form-panel">
+        <h2>Ustawienia ankiety</h2>
+        ${status(error, true)}
+        <form method="post" action="/moje/${survey.id}/edytuj">
+          ${csrfField(csrf)}
+          ${surveySettingsFields(values)}
+          <label for="description">Opis ankiety</label>
+          <textarea id="description" name="description" rows="4" maxlength="50000">${escape(values.description)}</textarea>
+          <button class="button primary" type="submit">Zapisz zmiany</button>
+        </form>
+      </section>
+      <section class="card form-panel">
+        <h2>Pytania z Google Forms</h2>
+        ${status(questionsError, true)}
+        ${survey.total ? '<p>Pytania można zaktualizować przed przesłaniem pierwszej odpowiedzi.</p>' : `
+        <p>Jeśli zmienisz pytania w Google Forms, wklej link do tego samego formularza, aby pobrać je ponownie.</p>
+        <form method="post" action="/moje/${survey.id}/pytania">
+          ${csrfField(csrf)}
+          <label for="link">Link do formularza</label>
+          <input id="link" name="link" type="url" placeholder="https://docs.google.com/forms/…" value="${escape(link)}" maxlength="2048" required>
+          <button class="button secondary" type="submit">Pobierz pytania ponownie</button>
+        </form>`}
       </section>
     </div>` });
 }
@@ -250,7 +290,7 @@ function questionView(question, values, fieldError) {
   return `<div class="card question"><label for="${name}">${label}</label>${description}${feedback}${control}</div>`;
 }
 
-export function takeView({ user, csrf, survey, questions, values = new URLSearchParams(), errors = {}, error }) {
+export function takeView({ user, csrf, survey, questions, questionVersion, values = new URLSearchParams(), errors = {}, error }) {
   return shell({ title: survey.title, user, csrf, tab: 'browse', main: `
     <div class="take-wrap">
       <div class="page-heading"><a class="back" href="/">Wszystkie ankiety</a><h1>${escape(survey.title)}</h1>
@@ -260,6 +300,7 @@ export function takeView({ user, csrf, survey, questions, values = new URLSearch
       ${status(error, true)}
       <form class="question-form" method="post" action="/ankiety/${survey.id}">
         ${csrfField(csrf)}
+        <input type="hidden" name="_questions" value="${escape(questionVersion)}">
         ${questions.map(question => questionView(question, values, errors[question.id])).join('')}
         <button class="button primary" type="submit">Wyślij odpowiedzi</button>
       </form>
@@ -268,7 +309,7 @@ export function takeView({ user, csrf, survey, questions, values = new URLSearch
 
 export function mineView({ user, csrf, surveys, message }) {
   return shell({ title: 'Moje ankiety', user, csrf, tab: 'mine', main: `
-    <div class="page-heading heading-row"><div><h1>Moje ankiety</h1><p>Sprawdzaj postęp, odblokowuj odpowiedzi i pobieraj wyniki.</p></div><a class="button primary" href="/dodaj">Dodaj ankietę</a></div>
+    <div class="page-heading heading-row"><div><h1>Moje ankiety</h1><p>Edytuj ankiety, sprawdzaj postęp i pobieraj wyniki.</p></div><a class="button primary" href="/dodaj">Dodaj ankietę</a></div>
     ${status(message)}
     ${surveys.length ? `<div class="survey-grid">${surveys.map(survey => `
       <article class="card survey-card mine-card">
@@ -276,7 +317,10 @@ export function mineView({ user, csrf, surveys, message }) {
         <h2><a href="/moje/${survey.id}">${escape(survey.title)}</a></h2>
         <progress max="${survey.goal}" value="${survey.total}" aria-label="Postęp zbierania odpowiedzi"></progress>
         <p>${number(survey.total)} z ${number(survey.goal)} odpowiedzi · ${number(survey.unlocked)} odblokowanych</p>
-        <a class="button secondary" href="/moje/${survey.id}">Zobacz wyniki</a>
+        <div class="mine-card-actions">
+          <a class="button secondary" href="/moje/${survey.id}">Zobacz wyniki</a>
+          <a class="button secondary" href="/moje/${survey.id}/edytuj">Edytuj</a>
+        </div>
       </article>`).join('')}</div>`
       : '<div class="card empty"><h2>Dodaj swoją pierwszą ankietę</h2><p>Zaimportuj formularz Google, żeby zacząć zbierać odpowiedzi.</p><a class="button primary" href="/dodaj">Importuj z Google Forms</a></div>'}` });
 }
@@ -285,9 +329,9 @@ export function resultsView({ user, csrf, survey, questions, responses, message,
   const max = Math.min(survey.total - survey.unlocked, user.credits);
   const lastPage = Math.ceil(survey.unlocked / 20);
   return shell({ title: survey.title, user, csrf, tab: 'mine', main: `
-    <div class="page-heading"><a class="back" href="/moje">Moje ankiety</a><h1>${escape(survey.title)}</h1>
+    <div class="page-heading heading-row"><div><a class="back" href="/moje">Moje ankiety</a><h1>${escape(survey.title)}</h1>
       <p>${number(survey.total)} z ${number(survey.goal)} odpowiedzi · ${survey.total >= survey.goal ? 'Cel osiągnięty' : 'Zbiera odpowiedzi'}</p>
-    </div>
+    </div><a class="button secondary" href="/moje/${survey.id}/edytuj">Edytuj ankietę</a></div>
     ${status(message)}${status(error, true)}
     <div class="stats">
       <div class="card stat"><strong>${number(survey.total)}</strong><span>Zebrane odpowiedzi</span></div>

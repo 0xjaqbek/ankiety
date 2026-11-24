@@ -7,7 +7,7 @@ import { databaseConnection, DatabaseConfigurationError } from './database.js';
 import { importGoogleForm, ImportError } from './google-forms.js';
 import { beginGoogleAuth, googleConfigurationError, googleEnabled, googleIdentity } from './google-auth.js';
 import {
-  authView, dashboardView, errorView, guideView, importView, mineView, previewView, resultsView, takeView,
+  authView, dashboardView, editSurveyView, errorView, guideView, importView, mineView, previewView, resultsView, takeView,
 } from './views.js';
 
 const deriveKey = promisify(scrypt);
@@ -26,6 +26,8 @@ const tokenPattern = /^[0-9a-f]{64}$/;
 const messages = {
   answered: 'Dziękujemy za wypełnienie ankiety. Na Twoje konto trafił 1 punkt.',
   published: 'Ankieta została opublikowana. Inne osoby mogą już ją wypełniać.',
+  edited: 'Zmiany w ankiecie zostały zapisane.',
+  'questions-updated': 'Pytania z Google Forms zostały zaktualizowane.',
   unlocked: 'Odpowiedzi zostały odblokowane. Możesz je teraz przeczytać lub pobrać.',
 };
 
@@ -332,14 +334,18 @@ async function authRoute(req, res, path, context) {
   redirect(res, '/');
 }
 
+function importPublishedForm(link) {
+  if (!link || link.length > 2048) throw new ImportError('Wklej link do opublikowanego formularza Google.');
+  return importGoogleForm(link);
+}
+
 async function importRoute(req, res, context) {
   if (req.method === 'GET') return reply(res, 200, importView(context));
 
   const form = await postData(req, context.csrf);
   const link = (form.get('link') || '').trim();
   try {
-    if (!link || link.length > 2048) throw new ImportError('Wklej link do opublikowanego formularza Google.');
-    const schema = await importGoogleForm(link);
+    const schema = await importPublishedForm(link);
     if (await context.db.one('SELECT 1 FROM surveys WHERE source_key = ?', schema.sourceKey)) {
       throw new ImportError('Ten formularz został już opublikowany w aplikacji.');
     }
@@ -355,37 +361,94 @@ async function importRoute(req, res, context) {
   }
 }
 
-async function publishRoute(req, res, draft, context) {
-  const schema = await getDraft(context.db, draft, context.user.id);
-  if (req.method === 'GET') return reply(res, 200, previewView({ ...context, draft, schema }));
-
-  const form = await postData(req, context.csrf);
-  const values = {
+function surveySettings(form) {
+  return {
     title: (form.get('title') || '').trim(),
     audience: (form.get('audience') || '').trim(),
     time: form.get('time'),
     goal: form.get('goal'),
   };
-  const invalid = error => reply(res, 422, previewView({ ...context, draft, schema, values, error }));
-  const time = int(values.time, 1, 120);
-  const goal = int(values.goal, 1, 10_000);
-  if (!values.title || values.title.length > 200 || !values.audience || values.audience.length > 200 || !time || !goal) {
-    return invalid('Sprawdź tytuł, grupę odbiorców, czas i liczbę odpowiedzi.');
-  }
+}
 
-  const id = await context.db.transaction(async tx => {
+function validSurveySettings(values) {
+  return values.title && values.title.length <= 200 && values.audience && values.audience.length <= 200
+    && int(values.time, 1, 120) && int(values.goal, 1, 10_000);
+}
+
+const settingsError = 'Sprawdź tytuł, grupę odbiorców, czas i liczbę odpowiedzi.';
+
+async function publishRoute(req, res, draft, context) {
+  const schema = await getDraft(context.db, draft, context.user.id);
+  if (req.method === 'GET') return reply(res, 200, previewView({ ...context, draft, schema }));
+
+  const form = await postData(req, context.csrf);
+  const values = surveySettings(form);
+  const invalid = error => reply(res, 422, previewView({ ...context, draft, schema, values, error }));
+  if (!validSurveySettings(values)) return invalid(settingsError);
+
+  const published = await context.db.transaction(async tx => {
     await getDraft(tx, draft, context.user.id);
     const result = await tx.run(`
       INSERT INTO surveys (owner_id, source_key, title, description, audience, time_minutes, goal, questions_json, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(source_key) DO NOTHING
     `, context.user.id, schema.sourceKey, values.title, schema.description, values.audience,
-      time, goal, JSON.stringify(schema.questions), Date.now());
-    if (!result.changes) return null;
+      Number(values.time), Number(values.goal), JSON.stringify(schema.questions), Date.now());
+    if (!result.changes) return false;
     await tx.run('DELETE FROM drafts WHERE id = ?', draft);
-    return result.id;
+    return true;
   });
-  if (!id) return invalid('Ten formularz jest już opublikowany w aplikacji.');
-  redirect(res, `/moje/${id}?status=published`);
+  if (!published) return invalid('Ten formularz jest już opublikowany w aplikacji.');
+  redirect(res, '/moje?status=published');
+}
+
+async function editSurveyRoute(req, res, surveyId, context, message) {
+  const survey = await ownedSurvey(context.db, context.user.id, surveyId);
+  if (req.method === 'GET') return reply(res, 200, editSurveyView({ ...context, survey, message }));
+
+  const form = await postData(req, context.csrf);
+  const values = { ...surveySettings(form), description: (form.get('description') || '').trim() };
+  const invalid = error => reply(res, 422, editSurveyView({ ...context, survey, values, error }));
+  if (!validSurveySettings(values)) return invalid(settingsError);
+  if (values.description.length > 50_000 && values.description !== survey.description) {
+    return invalid('Opis może mieć maksymalnie 50 000 znaków.');
+  }
+
+  await context.db.run(`
+    UPDATE surveys SET title = ?, description = ?, audience = ?, time_minutes = ?, goal = ?
+    WHERE id = ? AND owner_id = ?
+  `, values.title, values.description, values.audience, Number(values.time), Number(values.goal), surveyId, context.user.id);
+  redirect(res, '/moje?status=edited');
+}
+
+async function updateQuestionsRoute(req, res, surveyId, context) {
+  const survey = await ownedSurvey(context.db, context.user.id, surveyId);
+  const form = await postData(req, context.csrf);
+  const link = (form.get('link') || '').trim();
+  const lockedError = 'Pytania można zaktualizować przed przesłaniem pierwszej odpowiedzi.';
+  const invalid = (status, questionsError, current = survey) =>
+    reply(res, status, editSurveyView({ ...context, survey: current, link, questionsError }));
+  if (survey.total) return invalid(409, lockedError);
+
+  let schema;
+  try {
+    schema = await importPublishedForm(link);
+  } catch (error) {
+    if (!(error instanceof ImportError)) throw error;
+    return invalid(422, error.message);
+  }
+  if (schema.sourceKey !== survey.source_key) {
+    return invalid(422, 'Wklej link do tego samego formularza Google, z którego dodano ankietę.');
+  }
+
+  const result = await context.db.run(`
+    UPDATE surveys SET questions_json = ?
+    WHERE id = ? AND owner_id = ?
+      AND NOT EXISTS (SELECT 1 FROM responses WHERE survey_id = surveys.id)
+  `, JSON.stringify(schema.questions), surveyId, context.user.id);
+  if (!result.changes) {
+    return invalid(409, lockedError, await ownedSurvey(context.db, context.user.id, surveyId));
+  }
+  redirect(res, `/moje/${surveyId}/edytuj?status=questions-updated`);
 }
 
 async function answerState(db, surveyId, userId) {
@@ -401,21 +464,29 @@ async function answerState(db, surveyId, userId) {
 
 async function takeRoute(req, res, surveyId, context) {
   const survey = await answerState(context.db, surveyId, context.user.id);
-  const questions = JSON.parse(survey.questions_json);
-  if (req.method === 'GET') return reply(res, 200, takeView({ ...context, survey, questions }));
+  const view = (status, current, details = {}) => reply(res, status, takeView({
+    ...context, survey: current, questions: JSON.parse(current.questions_json),
+    questionVersion: digest(current.questions_json), ...details,
+  }));
+  const changed = current => view(409, current, { error: 'Ankieta została zaktualizowana. Sprawdź pytania i wypełnij formularz ponownie.' });
+  if (req.method === 'GET') return view(200, survey);
 
   const values = await postData(req, context.csrf);
-  const { answers, errors } = validation(questions, values);
+  if (values.get('_questions') !== digest(survey.questions_json)) return changed(survey);
+  const { answers, errors } = validation(JSON.parse(survey.questions_json), values);
   if (Object.keys(errors).length || !Object.keys(answers).length) {
     const error = Object.keys(errors).length ? 'Uzupełnij zaznaczone pytania.' : 'Udziel przynajmniej jednej odpowiedzi.';
-    return reply(res, 422, takeView({ ...context, survey, questions, values, errors, error }));
+    return view(422, survey, { values, errors, error });
   }
 
-  await context.db.transaction(async tx => {
-    await answerState(tx, surveyId, context.user.id);
+  const updated = await context.db.transaction(async tx => {
+    const current = await answerState(tx, surveyId, context.user.id);
+    if (current.questions_json !== survey.questions_json) return current;
     await tx.run('INSERT INTO responses (survey_id, respondent_id, answers_json, created_at) VALUES (?, ?, ?, ?)', surveyId, context.user.id, JSON.stringify(answers), Date.now());
     await tx.run('UPDATE users SET credits = credits + 1 WHERE id = ?', context.user.id);
+    return null;
   });
+  if (updated) return changed(updated);
   redirect(res, '/?status=answered');
 }
 
@@ -506,9 +577,11 @@ async function handle(req, res, connect, context) {
   const take = path.match(/^\/ankiety\/(\d+)$/);
   if (take) return takeRoute(req, res, int(take[1], 1, Number.MAX_SAFE_INTEGER), context);
 
-  const own = path.match(/^\/moje\/(\d+)(?:\/(csv|odblokuj))?$/);
+  const own = path.match(/^\/moje\/(\d+)(?:\/(csv|odblokuj|edytuj|pytania))?$/);
   if (own) {
     const surveyId = int(own[1], 1, Number.MAX_SAFE_INTEGER);
+    if (own[2] === 'edytuj') return editSurveyRoute(req, res, surveyId, context, message);
+    if (req.method === 'POST' && own[2] === 'pytania') return updateQuestionsRoute(req, res, surveyId, context);
     if (req.method === 'POST' && own[2] === 'odblokuj') return unlockRoute(req, res, surveyId, context);
     if (req.method === 'GET' && own[2] === 'csv') return exportCsv(res, db, user.id, surveyId);
     if (req.method === 'GET' && !own[2]) {
