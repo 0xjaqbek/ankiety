@@ -55,6 +55,18 @@ const schema = `
 
 export class DatabaseConfigurationError extends Error {}
 
+export function databaseEnvironment(env = process.env) {
+  const fixed = env.VERCEL_ENV === 'production'
+    || env.ANKIETY_TURSO_DATABASE_URL !== undefined
+    || env.ANKIETY_TURSO_AUTH_TOKEN !== undefined;
+  const url = (fixed ? env.ANKIETY_TURSO_DATABASE_URL : env.TURSO_DATABASE_URL)?.trim();
+  const authToken = (fixed ? env.ANKIETY_TURSO_AUTH_TOKEN : env.TURSO_AUTH_TOKEN)?.trim();
+  if (fixed && (!url || !authToken)) {
+    throw new DatabaseConfigurationError('Uzupełnij ANKIETY_TURSO_DATABASE_URL i ANKIETY_TURSO_AUTH_TOKEN dla stałej bazy aplikacji.');
+  }
+  return { url, authToken };
+}
+
 function operations(connection) {
   return {
     async one(sql, ...args) {
@@ -73,7 +85,7 @@ function operations(connection) {
 }
 
 async function openDatabase(requireRemote) {
-  const { TURSO_DATABASE_URL: url, TURSO_AUTH_TOKEN: authToken } = process.env;
+  const { url, authToken } = databaseEnvironment();
   let client;
   if (requireRemote || url || authToken) {
     if (!url || !authToken) {
