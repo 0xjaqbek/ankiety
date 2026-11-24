@@ -167,7 +167,18 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--purple); width
 .other-text { display: grid; gap: 0.25rem; padding: 0.45rem 0.65rem 0; }
 .choice-other:not(:has(input[value="other"]:checked)) .other-text { display: none; }
 .scale .choices { flex-direction: row; flex-wrap: wrap; }
-.scale .choices + .hint { margin: 0.6rem 0 0; }
+.scale-described .choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.75rem), 1fr));
+}
+.scale-described .choice { gap: 0.5rem; align-items: flex-start; }
+.scale-described .choice input { margin-top: 0.2rem; }
+.scale-option { display: grid; gap: 0.15rem; min-width: 0; }
+.scale-option > span { color: var(--muted); line-height: 1.3; }
+@media (max-width: 520px) {
+  .scale-described .choices { grid-template-columns: 1fr; }
+  .scale-option { display: flex; flex-wrap: wrap; gap: 0.3rem 0.55rem; }
+}
 .survey-section { padding: 0.8rem 0 0.25rem; }
 progress { width: 100%; height: 0.65rem; border: 0; border-radius: 1rem; appearance: none; overflow: hidden; background: var(--violet-pale); color: var(--purple); }
 progress::-webkit-progress-bar { background: var(--violet-pale); }

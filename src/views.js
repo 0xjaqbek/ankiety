@@ -1,4 +1,5 @@
 import { guideContents } from './guide.js';
+import { scalePresentation } from './survey-questions.js';
 
 const escapeChars = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const escape = (value = '') => String(value).replace(/[&<>"']/g, char => escapeChars[char]);
@@ -271,9 +272,11 @@ function questionView(question, values, fieldError) {
   if (question.kind === 'section') return `<section class="survey-section"><h2>${escape(question.label)}</h2>${question.description ? `<p class="preserve">${escape(question.description)}</p>` : ''}</section>`;
 
   const name = `q_${question.id}`;
-  const label = `${escape(question.label)}${question.required ? '<span class="asterisk" aria-hidden="true"> *</span>' : ''}`;
-  const description = question.description ? `<p id="${name}-description" class="hint preserve">${escape(question.description)}</p>` : '';
-  const describedBy = question.description ? ` aria-describedby="${name}-description"` : '';
+  const scale = question.kind === 'scale' ? scalePresentation(question) : null;
+  const label = `${escape(scale?.label ?? question.label)}${question.required ? '<span class="asterisk" aria-hidden="true"> *</span>' : ''}`;
+  const descriptionText = scale?.description ?? question.description;
+  const description = descriptionText ? `<p id="${name}-description" class="hint preserve">${escape(descriptionText)}</p>` : '';
+  const describedBy = descriptionText ? ` aria-describedby="${name}-description"` : '';
   const valuesForQuestion = values.getAll(name);
   const value = valuesForQuestion[0] ?? '';
   const required = question.required ? ' required' : '';
@@ -281,13 +284,15 @@ function questionView(question, values, fieldError) {
 
   if (['radio', 'checkbox', 'scale'].includes(question.kind)) {
     const checkbox = question.kind === 'checkbox';
+    const describedScale = scale?.labels.some(Boolean);
     const choice = (option, text) => `<label class="choice">
       <input type="${checkbox ? 'checkbox' : 'radio'}" name="${name}" value="${option}"${!checkbox ? required : ''}${describedBy}${valuesForQuestion.includes(String(option)) ? ' checked' : ''}>
-      <span>${escape(text)}</span>
+      ${describedScale
+        ? `<span class="scale-option"><strong>${escape(text)}</strong> ${scale.labels[option] ? `<span>${escape(scale.labels[option])}</span>` : ''}</span>`
+        : `<span>${escape(text)}</span>`}
     </label>`;
-    return `<fieldset class="card question ${question.kind}">
+    return `<fieldset class="card question ${question.kind}${describedScale ? ' scale-described' : ''}">
       <legend>${label}</legend>${description}${feedback}
-      ${question.scaleLabels[0] ? `<p class="hint">${escape(question.scaleLabels[0])}</p>` : ''}
       <div class="choices">
         ${question.choices.map((text, index) => choice(index, text)).join('')}
         ${question.hasOther ? `<div class="choice-other">
@@ -298,7 +303,6 @@ function questionView(question, values, fieldError) {
           </div>
         </div>` : ''}
       </div>
-      ${question.scaleLabels[1] ? `<p class="hint">${escape(question.scaleLabels[1])}</p>` : ''}
     </fieldset>`;
   }
 
