@@ -1,15 +1,8 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { mkdir } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-export function openDatabase(path) {
-  if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
-  const db = new DatabaseSync(path);
-  db.exec(`
-    PRAGMA foreign_keys = ON;
-    PRAGMA journal_mode = WAL;
-    PRAGMA busy_timeout = 5000;
-
+const schema = `
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
@@ -57,18 +50,75 @@ export function openDatabase(path) {
     );
 
     CREATE INDEX IF NOT EXISTS surveys_by_owner ON surveys(owner_id, id);
-  `);
-  return db;
+`;
+
+export class DatabaseConfigurationError extends Error {}
+
+function operations(connection) {
+  return {
+    async one(sql, ...args) {
+      const { rows } = await connection.execute({ sql, args });
+      return rows[0] ?? null;
+    },
+    async all(sql, ...args) {
+      const { rows } = await connection.execute({ sql, args });
+      return rows;
+    },
+    async run(sql, ...args) {
+      const result = await connection.execute({ sql, args });
+      return { changes: result.rowsAffected, id: Number(result.lastInsertRowid) };
+    },
+  };
 }
 
-export function transaction(db, action) {
-  db.exec('BEGIN IMMEDIATE');
+async function openDatabase(requireRemote) {
+  const { TURSO_DATABASE_URL: url, TURSO_AUTH_TOKEN: authToken } = process.env;
+  let client;
+  if (requireRemote || url || authToken) {
+    if (!url || !authToken) {
+      throw new DatabaseConfigurationError('Połącz bazę Turso w ustawieniach projektu i ponów wdrożenie.');
+    }
+    const { createClient } = await import('@libsql/client/web');
+    client = createClient({ url: url.replace(/^libsql:\/\//, 'https://'), authToken });
+  } else {
+    const path = process.env.DATABASE_PATH || 'data/ankiety.sqlite';
+    const location = path === ':memory:' ? 'file::memory:' : pathToFileURL(resolve(path)).href;
+    if (path !== ':memory:') await mkdir(dirname(resolve(path)), { recursive: true, mode: 0o700 });
+    const { createClient } = await import('@libsql/client');
+    client = createClient({ url: location, concurrency: 1 });
+  }
   try {
-    const result = action();
-    db.exec('COMMIT');
-    return result;
+    if (!url) await client.executeMultiple('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
+    await client.batch(schema.split(';').map(sql => sql.trim()).filter(Boolean), 'write');
   } catch (error) {
-    db.exec('ROLLBACK');
+    client.close();
     throw error;
   }
+  return {
+    ...operations(client),
+    async transaction(action) {
+      const tx = await client.transaction('write');
+      try {
+        const result = await action(operations(tx));
+        await tx.commit();
+        return result;
+      } catch (error) {
+        await tx.rollback().catch(() => {});
+        throw error;
+      } finally {
+        tx.close();
+      }
+    },
+  };
+}
+
+export function databaseConnection(requireRemote) {
+  let pending;
+  return () => {
+    pending ??= openDatabase(requireRemote).catch(error => {
+      pending = undefined;
+      throw error;
+    });
+    return pending;
+  };
 }
