@@ -207,7 +207,9 @@ export function previewView({ user, csrf, draft, schema, error, values = {} }) {
           ? `<li class="section-item"><h3>${escape(question.label)}</h3>${question.description ? `<p>${escape(question.description)}</p>` : ''}</li>`
           : `<li><h3>${escape(question.label)}</h3><p>${kinds[question.kind]}${question.required ? ' · Wymagane' : ''}</p>
           ${question.description ? `<p class="preserve">${escape(question.description)}</p>` : ''}
-          ${question.choices.length ? `<ul>${question.choices.map(choice => `<li>${escape(choice)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ol>
+          ${question.choices.length || question.hasOther
+            ? `<ul>${question.choices.map(choice => `<li>${escape(choice)}</li>`).join('')}${question.hasOther ? '<li>Inne (własna odpowiedź)</li>' : ''}</ul>`
+            : ''}</li>`).join('')}</ol>
       </section>
       <section class="card form-panel">
         <h2>Ustawienia publikacji</h2>
@@ -270,11 +272,23 @@ function questionView(question, values, fieldError) {
 
   if (['radio', 'checkbox', 'scale'].includes(question.kind)) {
     const checkbox = question.kind === 'checkbox';
+    const choice = (option, text) => `<label class="choice">
+      <input type="${checkbox ? 'checkbox' : 'radio'}" name="${name}" value="${option}"${!checkbox ? required : ''}${describedBy}${valuesForQuestion.includes(String(option)) ? ' checked' : ''}>
+      <span>${escape(text)}</span>
+    </label>`;
     return `<fieldset class="card question ${question.kind}">
       <legend>${label}</legend>${description}${feedback}
       ${question.scaleLabels[0] ? `<p class="hint">${escape(question.scaleLabels[0])}</p>` : ''}
-      <div class="choices">${question.choices.map((choice, index) => `
-        <label class="choice"><input type="${checkbox ? 'checkbox' : 'radio'}" name="${name}" value="${index}"${!checkbox ? required : ''}${describedBy}${valuesForQuestion.includes(String(index)) ? ' checked' : ''}><span>${escape(choice)}</span></label>`).join('')}</div>
+      <div class="choices">
+        ${question.choices.map((text, index) => choice(index, text)).join('')}
+        ${question.hasOther ? `<div class="choice-other">
+          ${choice('other', 'Inne')}
+          <div class="other-text">
+            <label for="${name}_other">Wpisz własną odpowiedź</label>
+            <input id="${name}_other" name="${name}_other" maxlength="1000" value="${escape(values.get(`${name}_other`) ?? '')}">
+          </div>
+        </div>` : ''}
+      </div>
       ${question.scaleLabels[1] ? `<p class="hint">${escape(question.scaleLabels[1])}</p>` : ''}
     </fieldset>`;
   }

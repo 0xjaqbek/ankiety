@@ -131,7 +131,8 @@ export async function importGoogleForm(link) {
     if (type === 0 && label.toLowerCase() === 'kod uczestnika') continue;
 
     const choices = entry[1] || [];
-    if (type >= 2 && (!Array.isArray(choices) || !choices.length || choices.some(choice => typeof choice?.[0] !== 'string'))) {
+    if (type >= 2 && (!Array.isArray(choices) || !choices.length
+        || choices.some(choice => !Array.isArray(choice) || (choice[4] !== 1 && typeof choice[0] !== 'string')))) {
       throw new ImportError(`Nie udało się odczytać opcji pytania „${label}”.`);
     }
     const id = String(entry[0]);
@@ -140,8 +141,13 @@ export async function importGoogleForm(link) {
     if (type !== 5 && entry[4]?.length) {
       throw new ImportError(`Pytanie „${label}” używa dodatkowej walidacji, której importer nie obsługuje.`);
     }
-    if (choices.some(choice => choice[2] != null || choice[3] != null || choice[4] === 1 || choice[5] != null)) {
-      throw new ImportError(`Pytanie „${label}” zawiera przejścia, obrazy lub odpowiedź „Inne”, których importer nie obsługuje.`);
+    if (choices.some(choice => choice[2] != null || choice[3] != null || choice[5] != null)) {
+      throw new ImportError(`Pytanie „${label}” zawiera przejście między sekcjami lub obraz w odpowiedzi, których importer nie obsługuje.`);
+    }
+
+    const otherOptions = choices.filter(choice => choice[4] === 1);
+    if (otherOptions.length && (otherOptions.length !== 1 || (type !== 2 && type !== 4))) {
+      throw new ImportError(`Nie udało się odczytać pola na własną odpowiedź w pytaniu „${label}”.`);
     }
 
     questions.push({
@@ -150,8 +156,9 @@ export async function importGoogleForm(link) {
       label,
       description: cleanLabel(description),
       required: entry[2] === 1,
-      choices: choices.map(choice => choice[0]),
+      choices: choices.filter(choice => choice[4] !== 1).map(choice => choice[0]),
       scaleLabels: type === 5 && Array.isArray(entry[3]) ? entry[3].map(cleanLabel) : [],
+      ...(otherOptions.length ? { hasOther: true } : {}),
     });
   }
 

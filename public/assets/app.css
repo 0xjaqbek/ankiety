@@ -160,6 +160,8 @@ input[type="radio"], input[type="checkbox"] { accent-color: var(--purple); width
 .choices { display: flex; flex-direction: column; gap: 0.45rem; }
 .choice { display: flex; align-items: center; gap: 0.65rem; min-height: 41px; padding: 0.45rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 500; }
 .choice:hover, .choice:has(input:checked) { background: #f4efff; border-color: #cbb9fa; }
+.other-text { display: grid; gap: 0.25rem; padding: 0.45rem 0.65rem 0; }
+.choice-other:not(:has(input[value="other"]:checked)) .other-text { display: none; }
 .scale .choices { flex-direction: row; flex-wrap: wrap; }
 .scale .choices + .hint { margin: 0.6rem 0 0; }
 .survey-section { padding: 0.8rem 0 0.25rem; }

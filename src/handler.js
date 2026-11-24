@@ -148,7 +148,8 @@ function validation(questions, values) {
   const errors = {};
   for (const question of questions) {
     if (question.kind === 'section') continue;
-    const submitted = values.getAll(`q_${question.id}`).filter(value => value.trim() !== '');
+    const name = `q_${question.id}`;
+    const submitted = values.getAll(name).filter(value => value.trim() !== '');
     if (!submitted.length) {
       if (question.required) errors[question.id] = 'Uzupełnij to pole.';
       continue;
@@ -165,13 +166,18 @@ function validation(questions, values) {
     }
 
     const checkbox = question.kind === 'checkbox';
-    const options = submitted.map(value => int(value, 0, question.choices.length - 1));
+    const options = submitted.map(value => question.hasOther && value === 'other' ? value : int(value, 0, question.choices.length - 1));
     if ((!checkbox && options.length !== 1) || options.includes(null) || options.length !== new Set(options).size) {
       errors[question.id] = 'Wybierz odpowiedź spośród dostępnych opcji.';
-    } else {
-      const labels = options.map(index => question.choices[index]);
-      answers[question.id] = checkbox ? labels : labels[0];
+      continue;
     }
+    const other = values.getAll(`${name}_other`);
+    if (options.includes('other') && (other.length !== 1 || !other[0].trim() || other[0].length > 1000)) {
+      errors[question.id] = 'Wpisz własną odpowiedź przy opcji „Inne”. Możesz użyć maksymalnie 1000 znaków.';
+      continue;
+    }
+    const labels = options.map(option => option === 'other' ? other[0].trim() : question.choices[option]);
+    answers[question.id] = checkbox ? labels : labels[0];
   }
   return { answers, errors };
 }
