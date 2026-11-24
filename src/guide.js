@@ -1,6 +1,6 @@
 const screens = {
   import: [725, 342, 'Pole Link do formularza i przycisk Importuj pytania', 2],
-  opublikuj: [371, 539, 'Ustawienia publikacji z przyciskiem Opublikuj ankietę na dole', 1],
+  opublikuj: [371, 446, 'Ustawienia publikacji z przyciskiem Opublikuj ankietę na dole', 1],
   wybierz: [551, 324, 'Przykładowa ankieta na liście z przyciskiem Wypełnij ankietę', 1],
   wyslij: [805, 414, 'Zaznaczona odpowiedź i przycisk Wyślij odpowiedzi pod pytaniami', 1],
   moje: [870, 250, 'Ankieta w zakładce Moje ankiety z przyciskiem Zobacz wyniki', 1],
@@ -51,7 +51,7 @@ export function guideContents() {
         </li>
         <li>
           <h3>Opublikuj ankietę</h3>
-          <p>Sprawdź pytania w podglądzie. Podaj, dla kogo jest ankieta, ile minut zajmie i ilu odpowiedzi potrzebujesz.</p>
+          <p>Sprawdź pytania w podglądzie. Podaj, dla kogo jest ankieta i ilu odpowiedzi potrzebujesz.</p>
           <p>Kliknij <strong>Opublikuj ankietę</strong>. Zobaczysz ją od razu w <strong>Moich ankietach</strong>. Aby zmienić jej ustawienia, kliknij <strong>Edytuj</strong>.</p>
           ${screenshot('opublikuj')}
         </li>

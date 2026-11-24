@@ -25,7 +25,7 @@ Na hostingu ustaw `HOST=0.0.0.0`, port przekazany przez hosting oraz `NODE_ENV=p
 
 1. Opublikuj formularz Google i udostępnij go wszystkim osobom z linkiem.
 2. W aplikacji wybierz **Dodaj ankietę** i wklej link dla respondentów. Możesz też wkleić skrócony link z `forms.gle`.
-3. Sprawdź podgląd, wpisz grupę odbiorców, czas wypełnienia i liczbę potrzebnych odpowiedzi, a następnie opublikuj ankietę.
+3. Sprawdź podgląd, wpisz grupę odbiorców i liczbę potrzebnych odpowiedzi, a następnie opublikuj ankietę.
 
 Importer odczytuje publicznie dostępny widok Google Forms. Obsługuje krótką i długą odpowiedź, jednokrotny i wielokrotny wybór z opcją „Inne” i własną odpowiedzią, listę rozwijaną, skalę i nagłówki sekcji bez rozgałęzień. Pole krótkiej odpowiedzi „Kod uczestnika” jest pomijane, ponieważ aplikacja przypisuje każde zgłoszenie do zalogowanego konta. Formularze prywatne i nieobsługiwane elementy, takie jak przesyłanie plików i rozgałęzienia, powodują komunikat przed publikacją.
 

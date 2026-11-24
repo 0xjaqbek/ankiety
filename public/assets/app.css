@@ -258,7 +258,7 @@ progress::-moz-progress-bar { background: var(--purple); border-radius: 1rem; }
 .guide-highlight { position: absolute; border: 3px solid #b91c37; border-radius: 9px; box-shadow: 0 0 0 1px white; pointer-events: none; }
 .shot-import .guide-highlight:nth-of-type(1) { left: 5.31%; top: 46.08%; width: 89.44%; height: 15.78%; }
 .shot-import .guide-highlight:nth-of-type(2) { left: 5.31%; top: 73.86%; width: 22.89%; height: 14.91%; }
-.shot-opublikuj .guide-highlight { left: 10.21%; top: 83.37%; width: 46.5%; height: 9.46%; }
+.shot-opublikuj .guide-highlight { left: 10.21%; top: 80.08%; width: 46.5%; height: 11.43%; }
 .shot-wybierz .guide-highlight { left: 5.1%; top: 75.69%; width: 29.78%; height: 15.74%; }
 .shot-wyslij .guide-highlight { left: 1.08%; top: 85.71%; width: 21.25%; height: 12.32%; }
 .shot-moje .guide-highlight { left: 3.23%; top: 68.29%; width: 16.55%; height: 20.4%; }

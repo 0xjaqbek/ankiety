@@ -122,7 +122,7 @@ export function authView({ mode, csrf, errors, values = {}, googleEnabled }) {
 
 function surveyCard(survey) {
   return `<article class="card survey-card">
-    <div class="survey-card-top">${tileIcon('surveys-icon')}<span class="tag">${number(survey.time_minutes)} min</span></div>
+    ${tileIcon('surveys-icon')}
     <h3><a href="/ankiety/${survey.id}">${escape(survey.title)}</a></h3>
     <p>Odbiorcy · ${escape(survey.audience)}</p>
     <a class="button secondary" href="/ankiety/${survey.id}">Wypełnij ankietę</a>
@@ -190,8 +190,6 @@ function surveySettingsFields(values) {
     <input id="title" name="title" value="${escape(values.title)}" maxlength="200" required>
     <label for="audience">Dla kogo jest ankieta?</label>
     <input id="audience" name="audience" value="${escape(values.audience)}" placeholder="Np. studenci ratownictwa" maxlength="200" required>
-    <label for="time">Czas wypełnienia w minutach</label>
-    <input id="time" name="time" type="number" min="1" max="120" value="${escape(values.time ?? 5)}" required>
     <label for="goal">Ile odpowiedzi potrzebujesz?</label>
     <input id="goal" name="goal" type="number" min="1" max="10000" value="${escape(values.goal ?? 10)}" required>`;
 }
@@ -226,7 +224,7 @@ export function previewView({ user, csrf, draft, schema, error, values = {} }) {
 export function editSurveyView({ user, csrf, survey, message, error, questionsError, link = '', values }) {
   values ??= {
     title: survey.title, description: survey.description, audience: survey.audience,
-    time: survey.time_minutes, goal: survey.goal,
+    goal: survey.goal,
   };
   return shell({ title: 'Edytuj ankietę', user, csrf, tab: 'mine', main: `
     <div class="page-heading"><a class="back" href="/moje">Moje ankiety</a><h1>Edytuj ankietę</h1><p>${escape(survey.title)}</p></div>
@@ -308,7 +306,7 @@ export function takeView({ user, csrf, survey, questions, questionVersion, value
   return shell({ title: survey.title, user, csrf, tab: 'browse', main: `
     <div class="take-wrap">
       <div class="page-heading"><a class="back" href="/">Wszystkie ankiety</a><h1>${escape(survey.title)}</h1>
-        <p>${number(survey.time_minutes)} min · Odbiorcy: ${escape(survey.audience)}</p>
+        <p>Odbiorcy: ${escape(survey.audience)}</p>
         ${survey.description ? `<p class="preserve">${escape(survey.description)}</p>` : ''}
       </div>
       ${status(error, true)}

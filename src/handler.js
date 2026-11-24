@@ -184,7 +184,7 @@ function validation(questions, values) {
 
 function availableSurveys(db, userId) {
   return db.all(`
-    SELECT surveys.id, surveys.title, surveys.audience, surveys.time_minutes
+    SELECT surveys.id, surveys.title, surveys.audience
     FROM surveys
     WHERE owner_id <> ?
       AND goal > (SELECT COUNT(*) FROM responses WHERE survey_id = surveys.id)
@@ -371,17 +371,16 @@ function surveySettings(form) {
   return {
     title: (form.get('title') || '').trim(),
     audience: (form.get('audience') || '').trim(),
-    time: form.get('time'),
     goal: form.get('goal'),
   };
 }
 
 function validSurveySettings(values) {
   return values.title && values.title.length <= 200 && values.audience && values.audience.length <= 200
-    && int(values.time, 1, 120) && int(values.goal, 1, 10_000);
+    && int(values.goal, 1, 10_000);
 }
 
-const settingsError = 'Sprawdź tytuł, grupę odbiorców, czas i liczbę odpowiedzi.';
+const settingsError = 'Sprawdź tytuł, grupę odbiorców i liczbę odpowiedzi.';
 
 async function publishRoute(req, res, draft, context) {
   const schema = await getDraft(context.db, draft, context.user.id);
@@ -394,11 +393,12 @@ async function publishRoute(req, res, draft, context) {
 
   const published = await context.db.transaction(async tx => {
     await getDraft(tx, draft, context.user.id);
+    // time_minutes is required by existing databases.
     const result = await tx.run(`
       INSERT INTO surveys (owner_id, source_key, title, description, audience, time_minutes, goal, questions_json, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(source_key) DO NOTHING
+      VALUES (?, ?, ?, ?, ?, 5, ?, ?, ?) ON CONFLICT(source_key) DO NOTHING
     `, context.user.id, schema.sourceKey, values.title, schema.description, values.audience,
-      Number(values.time), Number(values.goal), JSON.stringify(schema.questions), Date.now());
+      Number(values.goal), JSON.stringify(schema.questions), Date.now());
     if (!result.changes) return false;
     await tx.run('DELETE FROM drafts WHERE id = ?', draft);
     return true;
@@ -420,9 +420,9 @@ async function editSurveyRoute(req, res, surveyId, context, message) {
   }
 
   await context.db.run(`
-    UPDATE surveys SET title = ?, description = ?, audience = ?, time_minutes = ?, goal = ?
+    UPDATE surveys SET title = ?, description = ?, audience = ?, goal = ?
     WHERE id = ? AND owner_id = ?
-  `, values.title, values.description, values.audience, Number(values.time), Number(values.goal), surveyId, context.user.id);
+  `, values.title, values.description, values.audience, Number(values.goal), surveyId, context.user.id);
   redirect(res, '/moje?status=edited');
 }
 
