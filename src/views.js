@@ -355,11 +355,17 @@ export function takeView({ user, csrf, survey, questions, questionVersion, value
     </div>` });
 }
 
-export function mineView({ user, csrf, surveys, message }) {
+export function mineView({ user, csrf, surveys, draft, message }) {
   return shell({ title: 'Moje ankiety', user, csrf, tab: 'mine', main: `
     <div class="page-heading heading-row"><div><h1>Moje ankiety</h1><p>Edytuj ankiety, sprawdzaj postęp i pobieraj wyniki.</p></div><a class="button primary" href="/dodaj">Dodaj ankietę</a></div>
     ${status(message)}
-    ${surveys.length ? `<div class="survey-grid">${surveys.map(survey => `
+    ${draft || surveys.length ? `<div class="survey-grid">
+      ${draft ? `<article class="card survey-card mine-card">
+        <div class="survey-card-top">${tileIcon('surveys-icon')}<span class="tag">Wersja robocza</span></div>
+        <h2>${escape(draft.title)}</h2>
+        <a class="button primary" href="/dodaj/${escape(draft.id)}">Dokończ publikację</a>
+      </article>` : ''}
+      ${surveys.map(survey => `
       <article class="card survey-card mine-card">
         <div class="survey-card-top">${tileIcon('surveys-icon')}<span class="tag">${survey.total >= survey.goal ? 'Cel osiągnięty' : 'Zbiera odpowiedzi'}</span></div>
         <h2><a href="/moje/${survey.id}">${escape(survey.title)}</a></h2>

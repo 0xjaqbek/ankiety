@@ -595,8 +595,16 @@ async function handle(req, res, connect, context) {
     }
   }
   if (req.method === 'GET' && path === '/moje') {
-    const surveys = await db.all(`${surveyCounts} WHERE owner_id = ? ORDER BY surveys.id DESC`, user.id);
-    return reply(res, 200, mineView({ ...context, surveys, message }));
+    const [surveys, draft] = await Promise.all([
+      db.all(`${surveyCounts} WHERE owner_id = ? ORDER BY surveys.id DESC`, user.id),
+      db.one(`
+        SELECT id, json_extract(schema_json, '$.title') AS title
+        FROM drafts
+        WHERE owner_id = ? AND created_at > ?
+        ORDER BY created_at DESC LIMIT 1
+      `, user.id, Date.now() - draftAge),
+    ]);
+    return reply(res, 200, mineView({ ...context, surveys, draft, message }));
   }
   if (req.method === 'GET' && path === '/') {
     const query = (url.searchParams.get('q') || '').trim().slice(0, 120);
