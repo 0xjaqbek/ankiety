@@ -25,3 +25,22 @@ test('imports a built-in Other field for single and multiple choice questions', 
     ],
   );
 });
+
+test('preserves radio-grid columns, row IDs, and required flags', async t => {
+  const row = (id, label, required) => [
+    id, [['Nigdy'], ['Zawsze']], required, [label], null, null, null, null, null, null, null, [0],
+  ];
+  const schema = ['', [[11, 'Jak często?', 'Zaznacz odpowiedź w każdym wierszu.', 7,
+    [row(101, 'Czuję się zmęczony', 1), row(102, 'Mam czas na przerwę', 0)]]]];
+  t.mock.method(globalThis, 'fetch', async () =>
+    new Response(`<script>FB_PUBLIC_LOAD_DATA_ = ${JSON.stringify([null, schema])};</script>`));
+  const { questions } = await importGoogleForm(respondentLink);
+  assert.deepEqual(questions, [{
+    id: 'grid-11', kind: 'grid', label: 'Jak często?', description: 'Zaznacz odpowiedź w każdym wierszu.',
+    choices: ['Nigdy', 'Zawsze'],
+    rows: [
+      { id: '101', label: 'Czuję się zmęczony', required: true },
+      { id: '102', label: 'Mam czas na przerwę', required: false },
+    ],
+  }]);
+});

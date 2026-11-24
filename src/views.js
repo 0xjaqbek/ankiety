@@ -203,6 +203,10 @@ export function previewView({ user, csrf, draft, schema, error, values = {} }) {
         ${schema.description ? `<p class="preserve">${escape(schema.description)}</p>` : ''}
         <ol class="preview-questions">${schema.questions.map(question => question.kind === 'section'
           ? `<li class="section-item"><h3>${escape(question.label)}</h3>${question.description ? `<p>${escape(question.description)}</p>` : ''}</li>`
+          : question.kind === 'grid' ? `<li><h3>${escape(question.label)}</h3><p>Siatka jednokrotnego wyboru</p>
+            ${question.description ? `<p class="preserve">${escape(question.description)}</p>` : ''}
+            <p>${escape(question.choices.join(' · '))}</p>
+            <ul>${question.rows.map(row => `<li>${escape(row.label)}</li>`).join('')}</ul></li>`
           : `<li><h3>${escape(question.label)}</h3><p>${kinds[question.kind]}${question.required ? ' · Wymagane' : ''}</p>
           ${question.description ? `<p class="preserve">${escape(question.description)}</p>` : ''}
           ${question.choices.length || question.hasOther
@@ -302,6 +306,30 @@ function questionView(question, values, fieldError) {
   return `<div class="card question"><label for="${name}">${label}</label>${description}${feedback}${control}</div>`;
 }
 
+function gridView(grid, values, errors) {
+  return `<fieldset class="card question survey-grid-question">
+    <legend class="preserve">${escape(grid.label)}</legend>
+    ${grid.description ? `<p class="hint preserve">${escape(grid.description)}</p>` : ''}
+    <table>
+      <thead><tr><th scope="col">Stwierdzenie</th>${grid.choices.map(choice => `<th scope="col">${escape(choice)}</th>`).join('')}</tr></thead>
+      <tbody>${grid.rows.map(row => {
+        const name = `q_${row.id}`;
+        const selected = values.get(name);
+        const error = errors[row.id];
+        return `<tr>
+          <th scope="row">${escape(row.label)}${row.required ? '<span class="asterisk" aria-hidden="true"> *</span>' : ''}
+            ${error ? `<span id="${name}-error" role="alert" class="field-error">${escape(error)}</span>` : ''}
+          </th>
+          ${grid.choices.map((choice, index) => `<td><label class="grid-choice">
+            <input type="radio" name="${name}" value="${index}" aria-label="${escape(`${row.label} — ${choice}`)}"${row.required ? ' required' : ''}${selected === String(index) ? ' checked' : ''}${error ? ` aria-describedby="${name}-error"` : ''}>
+            <span>${escape(choice)}</span>
+          </label></td>`).join('')}
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  </fieldset>`;
+}
+
 export function takeView({ user, csrf, survey, questions, questionVersion, values = new URLSearchParams(), errors = {}, error }) {
   return shell({ title: survey.title, user, csrf, tab: 'browse', main: `
     <div class="take-wrap">
@@ -313,7 +341,8 @@ export function takeView({ user, csrf, survey, questions, questionVersion, value
       <form class="question-form" method="post" action="/ankiety/${survey.id}">
         ${csrfField(csrf)}
         <input type="hidden" name="_questions" value="${escape(questionVersion)}">
-        ${questions.map(question => questionView(question, values, errors[question.id])).join('')}
+        ${questions.map(question => question.kind === 'grid'
+          ? gridView(question, values, errors) : questionView(question, values, errors[question.id])).join('')}
         <button class="button primary" type="submit">Wyślij odpowiedzi</button>
       </form>
     </div>` });

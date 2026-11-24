@@ -99,6 +99,34 @@ function cleanLabel(value) {
   return typeof value === 'string' ? value.replace(/\*\*([^\n]+?)\*\*/g, '$1').trim() : '';
 }
 
+function registerQuestion(id, questionIds) {
+  if (questionIds.has(id)) throw new ImportError('Google zwróciło powtarzające się identyfikatory pytań.');
+  questionIds.add(id);
+}
+
+function importGrid(itemId, label, description, entries, questionIds) {
+  const invalid = () => new ImportError(`Nie udało się przenieść siatki „${label}”. Importer obsługuje siatki jednokrotnego wyboru ze wspólnymi kolumnami.`);
+  if (!Array.isArray(entries) || !entries.length) throw invalid();
+
+  let columns;
+  const rows = entries.map(entry => {
+    const choices = entry?.[1];
+    const rowLabel = cleanLabel(entry?.[3]?.[0]);
+    if (!Number.isInteger(entry?.[0]) || entry?.[11]?.[0] !== 0 || entry[4]?.length || !rowLabel
+        || !Array.isArray(choices) || !choices.length
+        || choices.some(choice => !Array.isArray(choice) || typeof choice[0] !== 'string' || choice.slice(1).some(Boolean))) {
+      throw invalid();
+    }
+    const labels = choices.map(choice => choice[0]);
+    columns ??= labels;
+    if (labels.length !== columns.length || labels.some((value, index) => value !== columns[index])) throw invalid();
+    const id = String(entry[0]);
+    registerQuestion(id, questionIds);
+    return { id, label: rowLabel, required: entry[2] === 1 };
+  });
+  return { id: `grid-${itemId}`, kind: 'grid', label, description: cleanLabel(description), choices: columns, rows };
+}
+
 export async function importGoogleForm(link) {
   let form;
   try {
@@ -124,6 +152,11 @@ export async function importGoogleForm(link) {
       continue;
     }
 
+    if (type === 7) {
+      questions.push(importGrid(itemId, label, description, entries, questionIds));
+      continue;
+    }
+
     const entry = entries?.[0];
     if (!kinds[type] || !Array.isArray(entry) || !Number.isInteger(entry[0]) || entries.length !== 1) {
       throw new ImportError(`Formularz zawiera nieobsługiwany element: „${label || 'bez nazwy'}”.`);
@@ -136,8 +169,7 @@ export async function importGoogleForm(link) {
       throw new ImportError(`Nie udało się odczytać opcji pytania „${label}”.`);
     }
     const id = String(entry[0]);
-    if (questionIds.has(id)) throw new ImportError('Google zwróciło powtarzające się identyfikatory pytań.');
-    questionIds.add(id);
+    registerQuestion(id, questionIds);
     if (type !== 5 && entry[4]?.length) {
       throw new ImportError(`Pytanie „${label}” używa dodatkowej walidacji, której importer nie obsługuje.`);
     }

@@ -270,3 +270,19 @@ progress::-moz-progress-bar { background: var(--purple); border-radius: 1rem; }
 .guide-menu strong { padding: 0.26rem 0.55rem; background: #e5f7ed; border: 1px solid #afd6bf; border-radius: 6px; color: #17643b; }
 .guide-section .guide-sources { margin-top: 1.15rem; font-size: 0.98rem; }
 .guide-end { margin-top: 1.4rem; }
+
+.survey-grid-question table { width: 100%; border-collapse: collapse; }
+.survey-grid-question th, .survey-grid-question td { padding: 0.5rem 0.3rem; border-bottom: 1px solid var(--border); text-align: center; }
+.survey-grid-question th[scope="row"] { text-align: left; font-weight: 600; }
+.survey-grid-question .field-error { display: block; }
+.grid-choice { display: flex; align-items: center; justify-content: center; min-height: 2rem; cursor: pointer; }
+.grid-choice span { display: none; }
+@media (max-width: 650px) {
+  .survey-grid-question thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .survey-grid-question tbody { display: block; }
+  .survey-grid-question tr { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+  .survey-grid-question th[scope="row"] { flex-basis: 100%; padding: 0.65rem 0 0.2rem; border: 0; }
+  .survey-grid-question td { padding: 0; border: 0; }
+  .grid-choice { gap: 0.35rem; padding: 0.35rem; justify-content: flex-start; }
+  .grid-choice span { display: inline; }
+}

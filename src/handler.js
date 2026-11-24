@@ -5,6 +5,7 @@ import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
 import { databaseConnection, DatabaseConfigurationError } from './database.js';
 import { importGoogleForm, ImportError } from './google-forms.js';
+import { answerQuestions } from './survey-questions.js';
 import { beginGoogleAuth, googleConfigurationError, googleEnabled, googleIdentity } from './google-auth.js';
 import {
   authView, dashboardView, editSurveyView, errorView, guideView, importView, mineView, previewView, resultsView, takeView,
@@ -147,7 +148,6 @@ function validation(questions, values) {
   const answers = {};
   const errors = {};
   for (const question of questions) {
-    if (question.kind === 'section') continue;
     const name = `q_${question.id}`;
     const submitted = values.getAll(name).filter(value => value.trim() !== '');
     if (!submitted.length) {
@@ -208,7 +208,7 @@ async function ownedSurvey(db, userId, surveyId) {
 
 async function resultData(db, userId, surveyId, requestPage) {
   const survey = await ownedSurvey(db, userId, surveyId);
-  const questions = JSON.parse(survey.questions_json).filter(question => question.kind !== 'section');
+  const questions = answerQuestions(JSON.parse(survey.questions_json));
   const page = Math.min(int(requestPage, 1, 500) || 1, Math.ceil(survey.unlocked / 20) || 1);
   const rows = await db.all(`
     SELECT answers_json FROM responses
@@ -229,7 +229,7 @@ async function exportCsv(res, db, userId, surveyId) {
   const survey = await ownedSurvey(db, userId, surveyId);
   if (!survey.unlocked) throw new HttpError(409, 'Odblokuj przynajmniej jedną odpowiedź, aby pobrać CSV.');
 
-  const questions = JSON.parse(survey.questions_json).filter(question => question.kind !== 'section');
+  const questions = answerQuestions(JSON.parse(survey.questions_json));
   const { lastId } = await db.one('SELECT MAX(id) AS lastId FROM responses WHERE survey_id = ? AND unlocked_at IS NOT NULL', surveyId);
   const query = `
     SELECT id, answers_json FROM responses
@@ -479,7 +479,7 @@ async function takeRoute(req, res, surveyId, context) {
 
   const values = await postData(req, context.csrf);
   if (values.get('_questions') !== digest(survey.questions_json)) return changed(survey);
-  const { answers, errors } = validation(JSON.parse(survey.questions_json), values);
+  const { answers, errors } = validation(answerQuestions(JSON.parse(survey.questions_json)), values);
   if (Object.keys(errors).length || !Object.keys(answers).length) {
     const error = Object.keys(errors).length ? 'Uzupełnij zaznaczone pytania.' : 'Udziel przynajmniej jednej odpowiedzi.';
     return view(422, survey, { values, errors, error });
