@@ -222,7 +222,7 @@ async function resultData(db, userId, surveyId, requestPage) {
 function csvCell(value) {
   let text = value == null ? '' : String(value);
   if (/^[\t\r\n]/.test(text) || /^[\s\u200B-\u200D\uFEFF]*[=+@\-]/.test(text)) text = `'${text}`;
-  return `"${text.replaceAll('"', '""')}"`;
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
 async function exportCsv(res, db, userId, surveyId) {
@@ -247,7 +247,7 @@ async function exportCsv(res, db, userId, surveyId) {
         const answers = JSON.parse(row.answers_json);
         const values = questions.map(question => {
           const value = answers[question.id];
-          return csvCell(Array.isArray(value) ? JSON.stringify(value) : value);
+          return csvCell(Array.isArray(value) ? value.join(', ') : value);
         });
         cursor = row.id;
         yield `${values.join(',')}\r\n`;
