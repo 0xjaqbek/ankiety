@@ -83,7 +83,14 @@ function stepList() {
   return steps.map(([icon, title, text]) => `<li>${tileIcon(icon)}<div><strong>${title}</strong><p>${text}</p></div></li>`).join('');
 }
 
-export function authView({ mode, csrf, errors, values = {}, googleEnabled }) {
+function communityStats(community) {
+  return `<dl class="community-stats" aria-label="Społeczność Ankiet">
+    <div><dt>Użytkownicy</dt><dd>${number(community.users)}</dd></div>
+    <div><dt>Opublikowane ankiety</dt><dd>${number(community.surveys)}</dd></div>
+  </dl>`;
+}
+
+export function authView({ mode, csrf, errors, values = {}, googleEnabled, community }) {
   const signup = mode === 'register';
   const heading = signup ? 'Utwórz konto' : 'Zaloguj się';
   const auth = `
@@ -114,6 +121,7 @@ export function authView({ mode, csrf, errors, values = {}, googleEnabled }) {
         <div class="guest-copy">
           <h1>Wypełniaj ankiety.<br><em>Odblokuj wyniki.</em></h1>
           <p>Zbieraj odpowiedzi do swojej ankiety i pomóż innym zebrać ich własne.</p>
+          ${communityStats(community)}
           <ul class="steps guest-steps">${stepList()}</ul>
         </div>
       </section>
@@ -130,7 +138,7 @@ function surveyCard(survey) {
   </article>`;
 }
 
-export function dashboardView({ user, csrf, surveys, completed, query = '', message }) {
+export function dashboardView({ user, csrf, surveys, completed, query = '', message, community }) {
   return shell({ title: 'Dostępne ankiety', user, csrf, tab: 'browse', main: `
     ${status(message)}
     <section class="hero">
@@ -140,6 +148,7 @@ export function dashboardView({ user, csrf, surveys, completed, query = '', mess
         <a class="button primary" href="/dodaj">Dodaj swoją ankietę</a>
       </div>
     </section>
+    ${communityStats(community)}
     <div class="dashboard-grid">
       <div>
         <section aria-labelledby="browse-heading">

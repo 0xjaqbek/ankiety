@@ -556,6 +556,13 @@ async function handle(req, res, connect, context) {
 
   if (!user && googleConfigurationError) throw new HttpError(503, googleConfigurationError);
 
+  if (['/', '/logowanie', '/rejestracja', '/google/callback'].includes(path)) {
+    context.community = await db.one(`
+      SELECT (SELECT COUNT(*) FROM users) AS users,
+        (SELECT COUNT(*) FROM surveys) AS surveys
+    `);
+  }
+
   if (googleEnabled && req.method === 'GET' && ['/google/start', '/google/callback'].includes(path)) {
     return googleRoute(req, res, url, context);
   }
