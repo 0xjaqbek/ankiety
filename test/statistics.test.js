@@ -38,6 +38,8 @@ test('Only the Google-linked creator can review visits, earned points and CSV do
       (3, 1, 'creator', 'Ankieta twórcy', '', '', 1, 1, '[]', ?)
   `, now, now);
   await db.run('INSERT INTO responses VALUES (1, 1, 1, ?, ?, ?)', JSON.stringify({ q1: 'Tak' }), now, now);
+  await db.run('INSERT INTO responses VALUES (2, 1, 3, ?, ?, NULL)', JSON.stringify({ q1: 'Nie' }), now);
+  await db.run('INSERT INTO responses VALUES (3, 3, 2, ?, ?, NULL)', '{}', now);
 
   const server = createServer(createHandler()).listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -66,9 +68,9 @@ test('Only the Google-linked creator can review visits, earned points and CSV do
   assert.equal(statistics.headers.get('cache-control'), 'no-store');
   const html = await statistics.text();
   assert.match(html, /href="\/statystyki" aria-current="page"/);
-  assert.match(html, /Creator<small>jaqbek\.eth@gmail\.com<\/small><ul[^>]*><li>Ankieta twórcy<\/li><\/ul><\/th>\s*<td>1<\/td><td>1<\/td><td>0<\/td>/);
-  assert.match(html, /Inactive<small>inactive@example\.test<\/small><\/th>\s*<td>0<\/td><td>0<\/td><td>0<\/td>/);
-  assert.match(html, /Respondent<small>respondent@example\.test<\/small><ul[^>]*><li>Druga &amp; kolejna<\/li><li>Survey<\/li><\/ul><\/th>\s*<td>2<\/td><td>0<\/td><td>2<\/td>/);
+  assert.match(html, /Creator<small>jaqbek\.eth@gmail\.com<\/small><ul[^>]*><li>Ankieta twórcy · <strong>1 odpowiedź<\/strong><\/li><\/ul><\/th>\s*<td>1<\/td><td>1<\/td><td>0<\/td>/);
+  assert.match(html, /Inactive<small>inactive@example\.test<\/small><\/th>\s*<td>0<\/td><td>1<\/td><td>0<\/td>/);
+  assert.match(html, /Respondent<small>respondent@example\.test<\/small><ul[^>]*><li>Druga &amp; kolejna · <strong>0 odpowiedzi<\/strong><\/li><li>Survey · <strong>2 odpowiedzi<\/strong><\/li><\/ul><\/th>\s*<td>2<\/td><td>1<\/td><td>2<\/td>/);
 
   await db.run("UPDATE users SET google_sub = NULL, password_hash = 'test-only' WHERE id = 1");
   assert.equal((await request('/statystyki', 1)).status, 403);

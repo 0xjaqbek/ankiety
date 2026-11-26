@@ -197,12 +197,14 @@ function validation(questions, values) {
   return { answers, errors };
 }
 
+const surveyResponseCount = '(SELECT COUNT(*) FROM responses WHERE survey_id = surveys.id)';
+
 function availableSurveys(db, userId) {
   return db.all(`
     SELECT surveys.id, surveys.title, surveys.audience
     FROM surveys
     WHERE owner_id <> ?
-      AND goal > (SELECT COUNT(*) FROM responses WHERE survey_id = surveys.id)
+      AND goal > ${surveyResponseCount}
       AND NOT EXISTS (SELECT 1 FROM responses WHERE survey_id = surveys.id AND respondent_id = ?)
     ORDER BY surveys.id DESC
   `, userId, userId);
@@ -210,7 +212,7 @@ function availableSurveys(db, userId) {
 
 const surveyCounts = `
   SELECT surveys.*,
-    (SELECT COUNT(*) FROM responses WHERE survey_id = surveys.id) AS total,
+    ${surveyResponseCount} AS total,
     (SELECT COUNT(*) FROM responses WHERE survey_id = surveys.id AND unlocked_at IS NOT NULL) AS unlocked
   FROM surveys
 `;
@@ -616,14 +618,15 @@ async function handle(req, res, connect, context) {
         COALESCE(user_activity.visits, 0) AS visits,
         (SELECT COUNT(*) FROM responses WHERE respondent_id = users.id) AS points_earned,
         COALESCE(user_activity.csv_downloads, 0) AS downloads,
-        (SELECT json_group_array(title) FROM (
-          SELECT title FROM surveys WHERE owner_id = users.id ORDER BY id DESC
-        )) AS survey_titles
+        (SELECT json_group_array(json_object('title', title, 'total', total)) FROM (
+          SELECT title, ${surveyResponseCount} AS total
+          FROM surveys WHERE owner_id = users.id ORDER BY id DESC
+        )) AS surveys_json
       FROM users LEFT JOIN user_activity ON user_activity.user_id = users.id
       ORDER BY users.name COLLATE NOCASE, users.id
     `);
-    const accountStats = accounts.map(({ survey_titles, ...account }) => ({
-      ...account, surveyTitles: JSON.parse(survey_titles),
+    const accountStats = accounts.map(({ surveys_json, ...account }) => ({
+      ...account, surveys: JSON.parse(surveys_json),
     }));
     return reply(res, 200, statisticsView({ ...context, accounts: accountStats }));
   }
