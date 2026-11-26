@@ -440,7 +440,9 @@ export function statisticsView({ user, csrf, accounts }) {
         <caption class="sr-only">Aktywność zarejestrowanych użytkowników</caption>
         <thead><tr><th scope="col">Użytkownik</th><th scope="col">Wizyty</th><th scope="col">Zdobyte punkty</th><th scope="col">Pobrania CSV</th></tr></thead>
         <tbody>${accounts.map(account => `<tr>
-          <th scope="row">${escape(account.name)}<small>${escape(account.email)}</small></th>
+          <th scope="row">${escape(account.name)}<small>${escape(account.email)}</small>${account.surveyTitles.length
+            ? `<ul class="activity-surveys" aria-label="Opublikowane ankiety">${account.surveyTitles.map(title => `<li>${escape(title)}</li>`).join('')}</ul>`
+            : ''}</th>
           <td>${number(account.visits)}</td><td>${number(account.points_earned)}</td><td>${number(account.downloads)}</td>
         </tr>`).join('')}</tbody>
       </table>

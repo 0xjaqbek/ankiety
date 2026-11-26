@@ -615,11 +615,17 @@ async function handle(req, res, connect, context) {
       SELECT users.name, users.email,
         COALESCE(user_activity.visits, 0) AS visits,
         (SELECT COUNT(*) FROM responses WHERE respondent_id = users.id) AS points_earned,
-        COALESCE(user_activity.csv_downloads, 0) AS downloads
+        COALESCE(user_activity.csv_downloads, 0) AS downloads,
+        (SELECT json_group_array(title) FROM (
+          SELECT title FROM surveys WHERE owner_id = users.id ORDER BY id DESC
+        )) AS survey_titles
       FROM users LEFT JOIN user_activity ON user_activity.user_id = users.id
       ORDER BY users.name COLLATE NOCASE, users.id
     `);
-    return reply(res, 200, statisticsView({ ...context, accounts }));
+    const accountStats = accounts.map(({ survey_titles, ...account }) => ({
+      ...account, surveyTitles: JSON.parse(survey_titles),
+    }));
+    return reply(res, 200, statisticsView({ ...context, accounts: accountStats }));
   }
   if (path === '/dodaj') return importRoute(req, res, context);
   if (draft) return publishRoute(req, res, draft[1], context);

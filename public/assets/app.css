@@ -206,7 +206,9 @@ progress::-moz-progress-bar { background: var(--purple); border-radius: 1rem; }
 .activity-table tbody tr { border-top: 1px solid var(--border); }
 .activity-table tr > :first-child { text-align: left; overflow-wrap: anywhere; }
 .activity-table small { display: block; color: var(--muted); font-weight: 400; }
-.activity-table td { font-variant-numeric: tabular-nums; }
+.activity-table td { font-variant-numeric: tabular-nums; vertical-align: top; }
+.activity-surveys { margin: 0.45rem 0 0; padding-inline-start: 1.1rem; font-size: 0.88rem; font-weight: 400; }
+.activity-surveys li + li { margin-top: 0.2rem; }
 .unlock { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 1rem 1.2rem; margin-bottom: 2rem; }
 .unlock p { margin-top: 0.28rem; color: var(--muted); }
 .unlock form { display: flex; align-items: end; flex-wrap: wrap; gap: 0.6rem; }
