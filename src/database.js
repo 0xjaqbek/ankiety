@@ -19,6 +19,13 @@ const schema = `
       expires_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS user_activity (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      visits INTEGER NOT NULL DEFAULT 0,
+      last_visit_at INTEGER,
+      csv_downloads INTEGER NOT NULL DEFAULT 0
+    );
+
     CREATE TABLE IF NOT EXISTS drafts (
       id TEXT PRIMARY KEY,
       owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

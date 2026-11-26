@@ -46,14 +46,16 @@ const links = [
   ['new', '/dodaj', 'Dodaj ankietę', 'plus-icon'],
   ['guide', '/instrukcja', 'Instrukcja', 'help-icon'],
 ];
+const statisticsLink = ['statistics', '/statystyki', 'Statystyki', 'statistics-icon'];
 
 function shell({ title, user, csrf, tab, main }) {
+  const menu = user.isCreator ? [...links, statisticsLink] : links;
   return document(title, `
     <div class="shell">
       <aside class="sidebar">
         ${brand}
-        <nav aria-label="Menu główne">
-          ${links.map(([id, url, label, icon]) => `<a href="${url}" ${tab === id ? 'aria-current="page"' : ''}>${tileIcon(icon)}${label}</a>`).join('')}
+        <nav aria-label="Menu główne"${user.isCreator ? ' class="creator-menu"' : ''}>
+          ${menu.map(([id, url, label, icon]) => `<a href="${url}" ${tab === id ? 'aria-current="page"' : ''}>${tileIcon(icon)}${label}</a>`).join('')}
         </nav>
         <div class="sidebar-foot">
           <div class="account">
@@ -426,6 +428,23 @@ export function resultsView({ user, csrf, survey, questions, responses, message,
         <span>Strona ${page} z ${lastPage}</span>
         ${page < lastPage ? `<a href="?strona=${page + 1}">Następna</a>` : ''}</nav>` : ''}
     </section>` });
+}
+
+export function statisticsView({ user, csrf, accounts }) {
+  return shell({ title: 'Statystyki', user, csrf, tab: 'statistics', main: `
+    <div class="page-heading"><h1>Statystyki</h1>
+      <p>Nowa wizyta zaczyna się po co najmniej 30 minutach przerwy. Wizyty i pobrania są liczone od uruchomienia tej zakładki.</p>
+    </div>
+    <div class="card activity-table">
+      <table>
+        <caption class="sr-only">Aktywność zarejestrowanych użytkowników</caption>
+        <thead><tr><th scope="col">Użytkownik</th><th scope="col">Wizyty</th><th scope="col">Zdobyte punkty</th><th scope="col">Pobrania CSV</th></tr></thead>
+        <tbody>${accounts.map(account => `<tr>
+          <th scope="row">${escape(account.name)}<small>${escape(account.email)}</small></th>
+          <td>${number(account.visits)}</td><td>${number(account.points_earned)}</td><td>${number(account.downloads)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>` });
 }
 
 export function guideView() {

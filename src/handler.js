@@ -8,12 +8,14 @@ import { importGoogleForm, ImportError } from './google-forms.js';
 import { answerQuestions } from './survey-questions.js';
 import { beginGoogleAuth, googleConfigurationError, googleEnabled, googleIdentity } from './google-auth.js';
 import {
-  authView, dashboardView, editSurveyView, errorView, guideView, importView, mineView, previewView, resultsView, takeView,
+  authView, dashboardView, editSurveyView, errorView, guideView, importView, mineView, previewView, resultsView, statisticsView, takeView,
 } from './views.js';
 
 const deriveKey = promisify(scrypt);
 const sessionAge = 14 * 24 * 60 * 60 * 1000;
 const draftAge = 24 * 60 * 60 * 1000;
+const visitGap = 30 * 60 * 1000;
+const creatorEmail = 'jaqbek.eth@gmail.com';
 const maxRequestBytes = 1_048_576;
 const secureCookies = process.env.COOKIE_SECURE !== undefined
   ? process.env.COOKIE_SECURE === '1'
@@ -57,15 +59,28 @@ function setCookie(res, key, value, maxAge) {
   res.appendHeader('Set-Cookie', `${key}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secureCookies ? '; Secure' : ''}`);
 }
 
-function getUser(req, db) {
+async function getUser(req, db) {
   const token = cookieValue(req, cookieNames.session);
   if (!tokenPattern.test(token)) return null;
 
-  return db.one(`
-    SELECT users.id, users.name, users.email, users.credits
+  const user = await db.one(`
+    SELECT users.id, users.name, users.email, users.credits, users.google_sub IS NOT NULL AS googleLinked
     FROM users JOIN sessions ON sessions.user_id = users.id
     WHERE sessions.digest = ? AND sessions.expires_at > ?
   `, digest(token), Date.now());
+  if (user) user.isCreator = Boolean(user.googleLinked) && user.email.toLowerCase() === creatorEmail;
+  return user;
+}
+
+function recordVisit(db, userId) {
+  const now = Date.now();
+  return db.run(`
+    INSERT INTO user_activity (user_id, visits, last_visit_at) VALUES (?, 1, ?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      visits = visits + CASE WHEN last_visit_at IS NULL OR last_visit_at <= ? THEN 1 ELSE 0 END,
+      last_visit_at = excluded.last_visit_at
+    WHERE last_visit_at IS NULL OR last_visit_at < excluded.last_visit_at
+  `, userId, now, now - visitGap).catch(error => console.error('Nie udało się zapisać wizyty.', error));
 }
 
 async function signIn(req, res, db, userId) {
@@ -253,6 +268,10 @@ async function exportCsv(res, db, userId, surveyId) {
         yield `${values.join(',')}\r\n`;
       }
     }
+    await db.run(`
+      INSERT INTO user_activity (user_id, csv_downloads) VALUES (?, 1)
+      ON CONFLICT(user_id) DO UPDATE SET csv_downloads = csv_downloads + 1
+    `, userId).catch(error => console.error('Nie udało się zapisać pobrania CSV.', error));
   }
 
   res.writeHead(200, {
@@ -582,15 +601,29 @@ async function handle(req, res, connect, context) {
     setCookie(res, cookieNames.csrf, '', 0);
     return redirect(res, '/logowanie');
   }
-  if (path === '/dodaj') return importRoute(req, res, context);
 
   const draft = path.match(/^\/dodaj\/([a-f0-9]{32})$/);
-  if (draft) return publishRoute(req, res, draft[1], context);
-
   const take = path.match(/^\/ankiety\/(\d+)$/);
-  if (take) return takeRoute(req, res, int(take[1], 1, Number.MAX_SAFE_INTEGER), context);
-
   const own = path.match(/^\/moje\/(\d+)(?:\/(csv|odblokuj|edytuj|pytania))?$/);
+  if (path === '/statystyki' && !user.isCreator) throw new HttpError(403, 'Statystyki są dostępne dla twórcy aplikacji.');
+  const pageVisit = ['/', '/moje', '/dodaj', '/statystyki'].includes(path)
+    || draft || take || (own && (!own[2] || own[2] === 'edytuj'));
+  if (req.method === 'GET' && pageVisit) await recordVisit(db, user.id);
+
+  if (req.method === 'GET' && path === '/statystyki') {
+    const accounts = await db.all(`
+      SELECT users.name, users.email,
+        COALESCE(user_activity.visits, 0) AS visits,
+        (SELECT COUNT(*) FROM responses WHERE respondent_id = users.id) AS points_earned,
+        COALESCE(user_activity.csv_downloads, 0) AS downloads
+      FROM users LEFT JOIN user_activity ON user_activity.user_id = users.id
+      ORDER BY users.name COLLATE NOCASE, users.id
+    `);
+    return reply(res, 200, statisticsView({ ...context, accounts }));
+  }
+  if (path === '/dodaj') return importRoute(req, res, context);
+  if (draft) return publishRoute(req, res, draft[1], context);
+  if (take) return takeRoute(req, res, int(take[1], 1, Number.MAX_SAFE_INTEGER), context);
   if (own) {
     const surveyId = int(own[1], 1, Number.MAX_SAFE_INTEGER);
     if (own[2] === 'edytuj') return editSurveyRoute(req, res, surveyId, context, message);
